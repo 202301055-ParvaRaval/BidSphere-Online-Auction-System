@@ -30,5 +30,3 @@ app.get("/", restrictToLoggedinUserOnly, (req, res) => res.send("BidSphere Onlin
 // User Route
 import authRoutes from "./routes/authRoutes.js";
 app.use("/bidsphere/user", authRoutes);
-
-
