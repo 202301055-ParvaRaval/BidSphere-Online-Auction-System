@@ -1,101 +1,98 @@
-// backend/controllers/authController.js
-//Controller functions for authentication routes: register, login, logout, getMe(current user)
-const User = require("../models/User"); //Import User model
-const jwt = require("jsonwebtoken"); //For JWT token creation and verification
+import User from "../models/User.js"; 
+import bcrypt from "bcryptjs";
+import { setUser , generateHashPassword} from "../services/auth.js";
+import { SendVerificationCode, WelcomeEmail } from "../services/email.sender.js";
 
-// Written a helper function to create cookie options based on rememberMe
-const createCookieOptions = (rememberMe) => {
-  const secure = process.env.NODE_ENV === "production";
-  const maxAge = rememberMe
-    ? parseInt(process.env.COOKIE_MAX_AGE_MS || 7 * 24 * 60 * 60 * 1000, 10)  // default 7d
-    : parseInt(process.env.COOKIE_MAX_AGE_MS_SESSION || 24 * 60 * 60 * 1000, 10); // default 1d
-  return {
-    httpOnly: true, //This prevents client-side JS from reading the cookie
-    secure, //Transmit cookie over HTTPS only in production
-    sameSite: "lax", //Balanced CSRF protection(can also use 'strict' for more security)
-    maxAge //Cookie expiration time as set above
-  };
-};
 
-// Also written a helper function to sign JWT tokens with variable expiration
-const signToken = (payload, rememberMe) => {
-  const expiresIn = rememberMe ? (process.env.JWT_EXPIRES_REMEMBER || "7d") : (process.env.JWT_EXPIRES || "1d");
-  return jwt.sign(payload, process.env.JWT_SECRET, { expiresIn });
-};
 
-//----------------Register-----------------------
-exports.registerUser = (req, res) => {
-  //Basic validation
-  const { name, email, password, role, rememberMe } = req.body;
-  if (!name || !email || !password) return res.status(400).json({ message: "Provide name, email, password" });
+async function handleRegister (req, res) {
 
-  //Check if user already exists
-  User.findOne({ email })
-    .then((existing) => {
-      if (existing) return res.status(400).json({ message: "User already exists" });
+  const { username, email, password} = req.body;
+  if (!username || !email || !password) {
+    return res.status(400).json({ message: "All fields are Required" });
+  }
 
-      //Created a new user
-      const newUser = new User({ name, email, password, role }); // Passowrd will be hashed in pre-save middleware
-      
-      newUser.save()
-        .then((saved) => {
-          //Generate JWT token and set cookie
-          const token = signToken({ id: saved._id, role: saved.role }, rememberMe);
-          res.cookie("token", token, createCookieOptions(rememberMe));
+  // Check if user already exists
+  const existingUser = await User.findOne({ email });
+  if (existingUser) {
+    return res.status(400).json({ message: "User already exists" });
+  }
 
-          //Send back user info (but not sent password)
-          res.status(201).json({
-            user: { id: saved._id, name: saved.name, email: saved.email, role: saved.role }
-          });
-        })
-        .catch((err) => res.status(500).json({ message: err.message }));
-    })
-    .catch((err) => res.status(500).json({ message: err.message }));
-};
+  const hashedPassword = await generateHashPassword(password);
+  const verificationCode = Math.floor(100000 + Math.random() *900000).toString();
 
-//----------------Login-----------------------
-exports.loginUser = (req, res) => {
-  //Again Basic validation
-  const { email, password, rememberMe } = req.body;
-  if (!email || !password) return res.status(400).json({ message: "Provide email and password" });
-
-  //Check if user exists
-  User.findOne({ email })
-    .then((user) => {
-      if (!user) return res.status(400).json({ message: "Invalid credentials" });
-
-      //Compare entered password with hashed password
-      user.matchPassword(password, (err, isMatch) => {
-        if (err) return res.status(500).json({ message: err.message });
-        if (!isMatch) return res.status(400).json({ message: "Invalid credentials" });
-
-        //Generate JWT token and set cookie
-        const token = signToken({ id: user._id, role: user.role }, rememberMe);
-        res.cookie("token", token, createCookieOptions(rememberMe));
-        
-        //Send back user info (but not sent password)
-        res.json({
-          user: { id: user._id, name: user.name, email: user.email, role: user.role }
-        });
-      });
-    })
-    .catch((err) => res.status(500).json({ message: err.message }));
-};
-
-//----------------Logout-----------------------
-exports.logoutUser = (req, res) => {
-  //Clear the token cookie
-  res.clearCookie("token", {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax"
+  User.create({
+    username,
+    email,
+    password: hashedPassword,
+    verificationCode
   });
-  res.json({ message: "Logged out" });
+
+  SendVerificationCode(email, verificationCode);
+  res.status(201).json({ message: "User registered successfully" });  
+}
+
+async function handleLogin (req, res) {
+  
+  const userToken = req.cookies?.token;
+
+  if(userToken) 
+    return res.status(400).json({message:"You are already logged in, go to home page"});
+
+  const { email, password } = req.body;
+
+  if (!email || !password) {
+    return res.status(400).json({ message: "Provide email and password" });
+  }
+
+  const user = await User.findOne({ email });  
+  if (!user) {
+    return res.status(401).json({ message: "Invalid email or password" });
+  }
+
+  // Compare password with stored hash
+  const isMatch = await bcrypt.compare(password, user.password);
+  if (!isMatch) {
+    return res.status(401).json({ message: "Invalid email or password" });
+  }
+
+  if (!user.isVerified) {
+    return res.status(401).json({ message: "Email not verified" });
+  }
+
+  const token = setUser(user);
+  res.cookie("token", token);
+  
+  return res.json({ message: "Login successful", token, user: { username: user.username, email: user.email } });
+  
 };
 
-//----------------Get Current User-----------------------
-exports.getMe = (req, res) => {
-  // req.user is set in authMiddleware's protect function
-  if (!req.user) return res.status(401).json({ message: "Not authenticated" });
-  res.json({ user: req.user });
+async function handleLogout (req, res) {
+  //Clear the token cookie
+  res.clearCookie("token");
+
+  return res.json({ message: "Logged out" });
 };
+
+async function verifyEmail (req, res) {
+    const { email, code } = req.body;
+
+    if (!email || !code) {
+        return res.status(400).json({ message: "All fields are required" });
+    }
+
+    const user = await User.findOne({ email, verificationCode: code });
+    // console.log(user);
+    if (!user) {
+        return res.status(400).json({ message: "Invalid User" });
+    }
+
+    user.isVerified = true;
+    user.verificationCode = undefined;
+    await user.save();
+
+    WelcomeEmail(user.email, user.username);
+    return res.status(200).json({ message: "Email Verified Successfully" })
+}
+
+export { handleRegister , handleLogin, handleLogout, verifyEmail };

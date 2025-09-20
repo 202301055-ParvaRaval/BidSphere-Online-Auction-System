@@ -1,42 +1,32 @@
-// backend/middleware/authMiddleware.js
-const jwt = require("jsonwebtoken");
-const User = require("../models/User");
+import { getUser } from "../services/auth.js";
 
-/**
- * Middleware to protect routes by validating JWT token
- * - Extracts token from cookies
- * - Verifies and decodes JWT
- * - Attaches authenticated user (without password) to req.user
- */
-const protect = async (req, res, next) => {
-  try {
-    const token = req.cookies?.token; //Retrieve token from cookies
-    //No token means not authorized
-    if (!token) {
-      return res.status(401).json({ message: "Not authorized, token missing" });
-    }
+async function restrictToLoggedinUserOnly (req, res, next){
+    
+    const userToken = req.cookies?.token;
 
-    //Verify token
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = await User.findById(decoded.id).select("-password");
-    if (!req.user) return res.status(401).json({ message: "Not authorized" });
-    next();// Proceed to next middleware or route handler
-  } catch (err) {
-    return res.status(401).json({ message: "Not authorized, token invalid" });
-  }
-};
+    if(!userToken) 
+      return res.status(400).json({message:"You are not logged in, go to login page"});
+    
+    const user = await getUser(userToken);
 
-// Middleware to check if user has one of the required roles
-const roleCheck = (roles) => {
-  return (req, res, next) => {
-    if (!req.user) return res.status(401).json({ message: "Not authorized" });
-    //Deny if user's role is not in the allowed roles
-    if (!roles.includes(req.user.role)) {
-      return res.status(403).json({ message: "Access denied" });
-    }
-    //User has required role, proceed
+    if(!user) 
+      return res.status(400).json({message:"The user belonging to this token does no longer exist."});
+    
+    req.user = user;
     next();
-  };
-};
+}
 
-module.exports = { protect, roleCheck };
+async function checkAuth (req, res, next){
+    
+    const userToken = req.cookies?.token;
+
+    const user = await getUser(userToken);
+    
+    req.user = user;
+    next();
+}
+
+export {
+    restrictToLoggedinUserOnly,
+    checkAuth
+}
