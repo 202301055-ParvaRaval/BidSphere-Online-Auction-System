@@ -70,7 +70,7 @@ export const Verification_Email_Template = `
               <p>If you did not create an account, no further action is required. If you have any questions, feel free to contact our support team.</p>
           </div>
           <div class="footer">
-              <p>&copy; ${new Date().getFullYear()} Your Company. All rights reserved.</p>
+              <p>&copy; ${new Date().getFullYear()} BidSphere. All rights reserved.</p>
           </div>
       </div>
   </body>
@@ -150,24 +150,44 @@ export const Welcome_Email_Template = `
       </style>
   </head>
   <body>
-      <div class="container">
-          <div class="header">Welcome to Our Community!</div>
-          <div class="content">
-              <p class="welcome-message">Hello {name},</p>
-              <p>We’re thrilled to have you join us! Your registration was successful, and we’re committed to providing you with the best experience possible.</p>
-              <p>Here’s how you can get started:</p>
-              <ul>
-                  <li>Explore our features and customize your experience.</li>
-                  <li>Stay informed by checking out our blog for the latest updates and tips.</li>
-                  <li>Reach out to our support team if you have any questions or need assistance.</li>
-              </ul>
-              <a href="#" class="button">Get Started</a>
-              <p>If you need any help, don’t hesitate to contact us. We’re here to support you every step of the way.</p>
-          </div>
-          <div class="footer">
-              <p>&copy; ${new Date().getFullYear()} Your Company. All rights reserved.</p>
-          </div>
-      </div>
-  </body>
+    <div class="container">
+        <div class="header">Welcome to BidSphere!</div>
+        <div class="content">
+            <p class="welcome-message">Hello {name},</p>
+            <p>We’re excited to have you on BidSphere, your online auction platform! Your registration was successful, and you can now start exploring and bidding on amazing items.</p>
+            <p>Here’s how you can get started:</p>
+            <ul>
+                <li>Browse auctions and find items you love.</li>
+                <li>Place bids and track your auctions.</li>
+                <body>
+    <div class="container">
+        <div class="header">Welcome to BidSphere!</div>
+        <div class="content">
+            <p class="welcome-message">Hello {name},</p>
+            <p>We’re excited to have you on BidSphere, your online auction platform! Your registration was successful, and you can now start exploring and bidding on amazing items.</p>
+            <p>Here’s how you can get started:</p>
+            <ul>
+                <li>Browse auctions and find items you love.</li>
+                <li>Place bids and track your auctions.</li>
+                <li>Contact our support team if you need any help.</li>
+            </ul>
+            <a href="#" class="button">Start Bidding Now</a>
+            <p>If you have any questions or need assistance, our team is here to help you every step of the way. Happy bidding!</p>
+        </div>
+        <div class="footer">
+            <p>&copy; ${new Date().getFullYear()} BidSphere. All rights reserved.</p>
+        </div>
+    </div>
+</body>
+
+            </ul>
+            <a href="#" class="button">Start Bidding Now</a>
+            <p>If you have any questions or need assistance, our team is here to help you every step of the way. Happy bidding!</p>
+        </div>
+        <div class="footer">
+            <p>&copy; ${new Date().getFullYear()} BidSphere. All rights reserved.</p>
+        </div>
+    </div>
+</body>
   </html>
 `;
